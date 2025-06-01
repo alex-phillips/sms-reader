@@ -29,6 +29,7 @@ export default function ConversationMedia() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const firstLoad = useRef(true);
@@ -73,11 +74,6 @@ export default function ConversationMedia() {
             }
           });
         }
-      } else {
-        // Scroll to bottom on initial load
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
       }
     } finally {
       setLoading(false);
@@ -113,7 +109,7 @@ export default function ConversationMedia() {
   return (
     <>
       <ScrollArea
-        style={{ height: "calc(100vh - 120px)" }}
+        style={{ height: window.innerHeight - 100 }}
         viewportRef={scrollRef}
         onScrollPositionChange={handleScroll}
       >

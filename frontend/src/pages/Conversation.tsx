@@ -9,6 +9,9 @@ import {
   Center,
   TextInput,
   CloseButton,
+  Modal,
+  Affix,
+  Flex,
 } from "@mantine/core";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Message, Conversation } from "../types";
@@ -50,6 +53,8 @@ export default function Conversation() {
   const [hasNewer, setHasNewer] = useState(true);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState<string>("");
+  const [mediaModalOpen, setMediaModalOpen] = useState<boolean>(false);
+  const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
 
   const debouncedSearch = useDebounce(search);
 
@@ -240,99 +245,139 @@ export default function Conversation() {
     }
   };
 
+  const openMedia = (media: Media) => {
+    setSelectedMedia(media);
+    setMediaModalOpen(true);
+  };
+
+  const onMediaModalClose = () => {
+    setSelectedMedia(null);
+    setMediaModalOpen(false);
+  };
+
   return (
     <>
-      <ScrollArea
-        style={{ height: "calc(100vh - 140px)" }}
-        viewportRef={scrollRef}
-        onScrollPositionChange={handleScroll}
-      >
-        <Stack ref={innerRef} p="md">
-          {loading && (
-            <Center>
-              <Loader />
-            </Center>
-          )}
+        <ScrollArea
+          style={{ height: window.innerHeight - 140 }}
+          viewportRef={scrollRef}
+          onScrollPositionChange={handleScroll}
+        >
+          <Stack ref={innerRef}>
+            {loading && (
+              <Center>
+                <Loader />
+              </Center>
+            )}
 
-          {messages.map((msg) => {
-            const isSent = msg.direction === "sent";
+            {messages.map((msg) => {
+              const isSent = msg.direction === "sent";
 
-            return (
-              <Stack
-                gap="2"
-                id={`message-${msg.id}`}
-                onClick={() => goToMessage(msg.id)}
-              >
-                {!isSent && (
-                  <Text size="xs" c="red" fw={700} pl={10}>
-                    {msg.contact}
-                  </Text>
-                )}
-                <Box
-                  key={msg.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: isSent ? "flex-end" : "flex-start",
-                  }}
+              return (
+                <Stack
+                  gap="2"
+                  id={`message-${msg.id}`}
+                  onClick={() => goToMessage(msg.id)}
                 >
-                  <Paper
-                    shadow="sm"
-                    radius="lg"
-                    p="sm"
-                    maw="50%"
+                  {!isSent && (
+                    <Text size="xs" c="red" fw={700} pl={10}>
+                      {msg.contact}
+                    </Text>
+                  )}
+                  <Box
+                    key={msg.id}
                     style={{
-                      color: "white",
-                      backgroundColor: isSent ? "#0b57d0" : "#303030",
-                      border: isSent
-                        ? "1px solid #0b57d0"
-                        : "1px solid #303030",
+                      display: "flex",
+                      justifyContent: isSent ? "flex-end" : "flex-start",
                     }}
                   >
-                    {msg.text && <Text size="sm">{msg.text}</Text>}
-                    {msg.media.map((media) => {
-                      console.log(media);
-                      return (
-                        <div key={media.id}>
-                          {media.content_type.match("video") && (
-                            <video
-                            controls={true}
-                            style={{ maxHeight: "50vh", maxWidth: "100%" }}
-                          >
-                            <source src={`/api/media/${media.id}/cache`} />
-                          </video>
-                          )}
-                          {media.content_type.match("image") && (
-                            <img
-                              src={`/api/media/${media.id}/cache`}
-                              alt={media.filename}
-                              style={{ maxHeight: "50vh", maxWidth: "100%" }}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                    <Text
-                      size="xs"
-                      c="gray"
-                      ta={isSent ? "right" : "left"}
-                      mt={4}
+                    <Paper
+                      shadow="sm"
+                      radius="lg"
+                      p="sm"
+                      maw="50%"
+                      style={{
+                        color: "white",
+                        backgroundColor: isSent ? "#0b57d0" : "#303030",
+                        border: isSent
+                          ? "1px solid #0b57d0"
+                          : "1px solid #303030",
+                      }}
                     >
-                      {new Date(msg.date).toLocaleString()}
-                    </Text>
-                  </Paper>
-                </Box>
-              </Stack>
-            );
-          })}
-        </Stack>
-      </ScrollArea>
+                      {msg.text && <Text size="sm">{msg.text}</Text>}
+                      {msg.media.map((media) => {
+                        console.log(media);
+                        return (
+                          <div key={media.id}>
+                            {media.content_type.match("video") && (
+                              <video
+                                controls={true}
+                                style={{ maxHeight: "50vh", maxWidth: "100%" }}
+                              >
+                                <source src={`/api/media/${media.id}/cache`} />
+                              </video>
+                            )}
+                            {media.content_type.match("image") && (
+                              <img
+                                onClick={() => openMedia(media)}
+                                src={`/api/media/${media.id}/cache`}
+                                alt={media.filename}
+                                style={{ maxHeight: "50vh", maxWidth: "100%" }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                      <Text
+                        size="xs"
+                        c="gray"
+                        ta={isSent ? "right" : "left"}
+                        mt={4}
+                      >
+                        {new Date(msg.date).toLocaleString()}
+                      </Text>
+                    </Paper>
+                  </Box>
+                </Stack>
+              );
+            })}
+          </Stack>
+        </ScrollArea>
 
-      <TextInput
-        placeholder="Search"
-        value={search}
-        onChange={onSearchChange}
-        rightSection={<CloseButton onClick={reset} />}
-      />
+        <Affix position={{ bottom: 10, right: 10, left: 10 }}>
+          <TextInput
+            placeholder="Search"
+            value={search}
+            onChange={onSearchChange}
+            rightSection={<CloseButton onClick={reset} />}
+          />
+        </Affix>
+
+      <Modal
+        size="auto"
+        fullScreen
+        opened={mediaModalOpen}
+        onClose={onMediaModalClose}
+      >
+        {selectedMedia && (
+          <Center>
+            {selectedMedia.content_type.match("video") && (
+              <video
+                controls={true}
+                style={{ maxHeight: "calc(98vh - 60px)", maxWidth: "100%" }}
+              >
+                <source src={`/api/media/${selectedMedia.id}/cache`} />
+              </video>
+            )}
+            {selectedMedia.content_type.match("image") && (
+              <img
+                src={`/api/media/${selectedMedia.id}/cache`}
+                alt={selectedMedia.filename}
+                style={{ maxHeight: "calc(98vh - 60px)", maxWidth: "100%" }}
+              />
+            )}
+          </Center>
+        )}
+      </Modal>
     </>
   );
 }
