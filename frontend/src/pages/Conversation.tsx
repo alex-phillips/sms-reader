@@ -9,12 +9,11 @@ import {
   Center,
   TextInput,
   CloseButton,
-  Modal,
   Affix,
-  Flex,
 } from "@mantine/core";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { Message, Conversation } from "../types";
+import type { Message, Conversation, Media } from "../types";
+import MediaModal from "../components/MediaModal";
 
 const PAGE_SIZE = 50;
 
@@ -123,10 +122,10 @@ export default function Conversation() {
           scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
         }
 
-        // Re-enable scroll handling after short delay
+        // Re-enable scroll
         setTimeout(() => {
           skipScrollEvent.current = false;
-        }, 500); // 200ms should be enough, adjust if needed
+        }, 500);
       }, 0);
     } finally {
       setLoading(false);
@@ -240,7 +239,6 @@ export default function Conversation() {
 
   const goToMessage = (messageId: number) => {
     if (search) {
-      // navigate(`/conversation/${conversationId}?startMessageId=${messageId}`)
       fetchInitialMessages(messageId.toString());
     }
   };
@@ -257,127 +255,106 @@ export default function Conversation() {
 
   return (
     <>
-        <ScrollArea
-          style={{ height: window.innerHeight - 140 }}
-          viewportRef={scrollRef}
-          onScrollPositionChange={handleScroll}
-        >
-          <Stack ref={innerRef}>
-            {loading && (
-              <Center>
-                <Loader />
-              </Center>
-            )}
+      <ScrollArea
+        style={{ height: window.innerHeight - 140 }}
+        viewportRef={scrollRef}
+        onScrollPositionChange={handleScroll}
+      >
+        <Stack ref={innerRef}>
+          {loading && (
+            <Center>
+              <Loader />
+            </Center>
+          )}
 
-            {messages.map((msg) => {
-              const isSent = msg.direction === "sent";
+          {messages.map((msg) => {
+            const isSent = msg.direction === "sent";
 
-              return (
-                <Stack
-                  gap="2"
-                  id={`message-${msg.id}`}
-                  onClick={() => goToMessage(msg.id)}
+            return (
+              <Stack
+                gap="2"
+                id={`message-${msg.id}`}
+                onClick={() => goToMessage(msg.id)}
+              >
+                {!isSent && (
+                  <Text size="xs" c="red" fw={700} pl={10}>
+                    {msg.contact}
+                  </Text>
+                )}
+                <Box
+                  key={msg.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: isSent ? "flex-end" : "flex-start",
+                  }}
                 >
-                  {!isSent && (
-                    <Text size="xs" c="red" fw={700} pl={10}>
-                      {msg.contact}
-                    </Text>
-                  )}
-                  <Box
-                    key={msg.id}
+                  <Paper
+                    shadow="sm"
+                    radius="lg"
+                    p="sm"
+                    maw="50%"
                     style={{
-                      display: "flex",
-                      justifyContent: isSent ? "flex-end" : "flex-start",
+                      color: "white",
+                      backgroundColor: isSent ? "#0b57d0" : "#303030",
+                      border: isSent
+                        ? "1px solid #0b57d0"
+                        : "1px solid #303030",
                     }}
                   >
-                    <Paper
-                      shadow="sm"
-                      radius="lg"
-                      p="sm"
-                      maw="50%"
-                      style={{
-                        color: "white",
-                        backgroundColor: isSent ? "#0b57d0" : "#303030",
-                        border: isSent
-                          ? "1px solid #0b57d0"
-                          : "1px solid #303030",
-                      }}
+                    {msg.text && <Text size="sm">{msg.text}</Text>}
+                    {msg.media.map((media) => {
+                      console.log(media);
+                      return (
+                        <div key={media.id}>
+                          {media.content_type.match("video") && (
+                            <video
+                              controls={true}
+                              style={{ maxHeight: "50vh", maxWidth: "100%" }}
+                            >
+                              <source src={`/api/media/${media.id}/cache`} />
+                            </video>
+                          )}
+                          {media.content_type.match("image") && (
+                            <img
+                              onClick={() => openMedia(media)}
+                              src={`/api/media/${media.id}/cache`}
+                              alt={media.filename}
+                              style={{ maxHeight: "50vh", maxWidth: "100%" }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                    <Text
+                      size="xs"
+                      c="gray"
+                      ta={isSent ? "right" : "left"}
+                      mt={4}
                     >
-                      {msg.text && <Text size="sm">{msg.text}</Text>}
-                      {msg.media.map((media) => {
-                        console.log(media);
-                        return (
-                          <div key={media.id}>
-                            {media.content_type.match("video") && (
-                              <video
-                                controls={true}
-                                style={{ maxHeight: "50vh", maxWidth: "100%" }}
-                              >
-                                <source src={`/api/media/${media.id}/cache`} />
-                              </video>
-                            )}
-                            {media.content_type.match("image") && (
-                              <img
-                                onClick={() => openMedia(media)}
-                                src={`/api/media/${media.id}/cache`}
-                                alt={media.filename}
-                                style={{ maxHeight: "50vh", maxWidth: "100%" }}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-                      <Text
-                        size="xs"
-                        c="gray"
-                        ta={isSent ? "right" : "left"}
-                        mt={4}
-                      >
-                        {new Date(msg.date).toLocaleString()}
-                      </Text>
-                    </Paper>
-                  </Box>
-                </Stack>
-              );
-            })}
-          </Stack>
-        </ScrollArea>
+                      {new Date(msg.date).toLocaleString()}
+                    </Text>
+                  </Paper>
+                </Box>
+              </Stack>
+            );
+          })}
+        </Stack>
+      </ScrollArea>
 
-        <Affix position={{ bottom: 10, right: 10, left: 10 }}>
-          <TextInput
-            placeholder="Search"
-            value={search}
-            onChange={onSearchChange}
-            rightSection={<CloseButton onClick={reset} />}
-          />
-        </Affix>
+      <Affix position={{ bottom: 10, right: 10, left: 10 }}>
+        <TextInput
+          placeholder="Search"
+          value={search}
+          onChange={onSearchChange}
+          rightSection={<CloseButton onClick={reset} />}
+        />
+      </Affix>
 
-      <Modal
-        size="auto"
-        fullScreen
+      <MediaModal
         opened={mediaModalOpen}
         onClose={onMediaModalClose}
-      >
-        {selectedMedia && (
-          <Center>
-            {selectedMedia.content_type.match("video") && (
-              <video
-                controls={true}
-                style={{ maxHeight: "calc(98vh - 60px)", maxWidth: "100%" }}
-              >
-                <source src={`/api/media/${selectedMedia.id}/cache`} />
-              </video>
-            )}
-            {selectedMedia.content_type.match("image") && (
-              <img
-                src={`/api/media/${selectedMedia.id}/cache`}
-                alt={selectedMedia.filename}
-                style={{ maxHeight: "calc(98vh - 60px)", maxWidth: "100%" }}
-              />
-            )}
-          </Center>
-        )}
-      </Modal>
+        media={selectedMedia}
+      />
     </>
   );
 }

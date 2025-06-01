@@ -6,7 +6,7 @@ export interface Conversation {
 
 export interface Contact {
   id: number;
-  contact_name: string | null;
+  name: string | null;
   address: string;
 }
 
@@ -23,8 +23,8 @@ export interface ConversationMedia {
   message_id: number;
   date: string;
   contact_id: number;
-  contact_name: string;
-  contact_address: string;
+  name: string;
+  address: string;
 }
 
 export interface Message {

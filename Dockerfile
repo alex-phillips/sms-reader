@@ -29,5 +29,7 @@ RUN \
     /tmp/* \
     /app/frontend/node_modules
 
+WORKDIR /app
+
 # add local files
 COPY /root /

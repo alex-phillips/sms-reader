@@ -1,5 +1,4 @@
-import uuid
-from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
+from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -32,7 +31,7 @@ class Conversation(SQLModel, table=True):
 class Contact(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     address: str = Field(unique=True, index=True)
-    contact_name: Optional[str] = None
+    name: Optional[str] = None
 
     conversations: List[Conversation] = Relationship(
         back_populates="contacts", link_model=ConversationContactLink
@@ -42,7 +41,7 @@ class Contact(SQLModel, table=True):
 
 class Message(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    date: datetime  # Unix timestamp in milliseconds
+    date: datetime
     type: MessageType
     direction: Direction
     text: Optional[str] = None

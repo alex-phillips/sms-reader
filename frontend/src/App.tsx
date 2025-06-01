@@ -31,7 +31,9 @@ export default function App() {
     useState<Conversation[]>(conversations);
   const [search, setSearch] = useState<string>("");
   const [header, setHeader] = useState<string>("Messages");
-  const [activeConvoId, setActiveConvoId] = useState<number>(conversationId ? parseInt(conversationId) : 0);
+  const [activeConvoId, setActiveConvoId] = useState<number>(
+    conversationId ? parseInt(conversationId) : 0
+  );
   const [activeConvo, setActiveConvo] = useState<Conversation | null>(null);
 
   useEffect(() => {
@@ -48,9 +50,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setActiveConvo(
-      conversations.find((c) => c.id == activeConvoId) || null
-    );
+    setActiveConvo(conversations.find((c) => c.id == activeConvoId) || null);
   }, [conversations, activeConvoId]);
 
   const onSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +146,12 @@ export default function App() {
         </AppShell.Header>
 
         <AppShell.Navbar p="md">
-          <TextInput placeholder="Search" value={search} onChange={onSearch} pb={10}/>
+          <TextInput
+            placeholder="Search"
+            value={search}
+            onChange={onSearch}
+            pb={10}
+          />
 
           <ScrollArea>
             {filteredConversations.map((conversation) => (
@@ -188,7 +193,7 @@ export default function App() {
               }}
             >
               <Group justify="space-between">
-                <Text size="sm">{contact.contact_name}</Text>
+                <Text size="sm">{contact.name}</Text>
                 <Text size="sm">{contact.address}</Text>
               </Group>
             </Paper>

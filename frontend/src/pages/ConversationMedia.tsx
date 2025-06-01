@@ -9,8 +9,9 @@ import {
   ActionIcon,
 } from "@mantine/core";
 import { useNavigate, useParams } from "react-router-dom";
-import type { ConversationMedia } from "../types";
+import type { Media, ConversationMedia } from "../types";
 import { ExternalLink } from "lucide-react";
+import MediaModal from "../components/MediaModal";
 
 const PAGE_SIZE = 30;
 
@@ -29,6 +30,8 @@ export default function ConversationMedia() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [mediaModalOpen, setMediaModalOpen] = useState<boolean>(false);
+  const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -55,15 +58,13 @@ export default function ConversationMedia() {
       setHasMore(res.has_more);
       setOffset(newOffset + newMedia.length);
 
-      // Prepend older messages
-      console.log(newOffset);
       if (newOffset > 0) {
         setMedia((prev) => [...prev, ...newMedia]);
       } else {
         setMedia(newMedia);
       }
 
-      // Maintain scroll position after prepend
+      // Maintain scroll position after update
       if (newOffset > 0) {
         if (innerRef.current && !firstLoad.current) {
           const prevHeight = innerRef.current.scrollHeight;
@@ -106,6 +107,16 @@ export default function ConversationMedia() {
     navigate(`/conversation/${conversationId}?startMessageId=${messageId}`);
   };
 
+  const openMedia = (media: Media) => {
+    setSelectedMedia(media);
+    setMediaModalOpen(true);
+  };
+
+  const onMediaModalClose = () => {
+    setSelectedMedia(null);
+    setMediaModalOpen(false);
+  };
+
   return (
     <>
       <ScrollArea
@@ -138,7 +149,6 @@ export default function ConversationMedia() {
               }}
             >
               {media.map((item) => {
-                console.log(item);
                 return (
                   <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
                     <Tooltip label={new Date(item.date).toLocaleString()}>
@@ -153,6 +163,7 @@ export default function ConversationMedia() {
                         )}
                         {item.content_type.match("image") && (
                           <img
+                            onClick={() => openMedia(item)}
                             src={`/api/media/${item.id}/cache`}
                             alt={item.filename}
                             style={{ width: "100%" }}
@@ -186,6 +197,12 @@ export default function ConversationMedia() {
           )}
         </Stack>
       </ScrollArea>
+
+      <MediaModal
+        opened={mediaModalOpen}
+        onClose={onMediaModalClose}
+        media={selectedMedia}
+      />
     </>
   );
 }

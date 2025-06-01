@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, create_engine
 
 sqlite_file_name = "sms.db"
 engine = create_engine(f"sqlite:///{sqlite_file_name}", echo=False)

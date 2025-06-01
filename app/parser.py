@@ -1,4 +1,3 @@
-import uuid
 import base64
 import csv
 import mimetypes
@@ -30,22 +29,22 @@ class Parser:
     session: Session
 
     def get_or_create_contact(
-        self, address: str, contact_name: Optional[str] = None
+        self, address: str, name: Optional[str] = None
     ) -> Contact:
         address = normalize_number(address)
         statement = select(Contact).where(Contact.address == address)
         contact = self.session.exec(statement).first()
 
         if contact:
-            if not contact.contact_name and contact_name:
-                contact.contact_name = contact_name
+            if not contact.name and name:
+                contact.name = name
                 self.session.add(contact)
 
                 self.session.commit()
                 self.session.refresh(contact)
 
         if not contact:
-            contact = Contact(address=address, contact_name=contact_name)
+            contact = Contact(address=address, name=name)
             self.session.add(contact)
             self.session.commit()
             self.session.refresh(contact)
@@ -55,7 +54,7 @@ class Parser:
     def get_conversation_by_contacts(
         self, contact_ids: list[int]
     ) -> Optional[Conversation]:
-        # First, get conversations where the number of matched contacts equals len(contact_ids)
+        # First, get conversations where contacts count matches
         possible_conversations = self.session.exec(
             select(Conversation)
             .join(ConversationContactLink)
@@ -64,12 +63,12 @@ class Parser:
             .having(func.count(ConversationContactLink.contact_id) == len(contact_ids))
         ).all()
 
-        # Filter out any conversations that include *additional* contacts
+        # Find convo where all contacts match
         for convo in possible_conversations:
             convo_contact_ids = {contact.id for contact in convo.contacts}
             if convo_contact_ids == set(contact_ids):
                 conversation_name = ", ".join(
-                    contact.contact_name if contact.contact_name else contact.address
+                    contact.name if contact.name else contact.address
                     for contact in sorted(convo.contacts, key=lambda c: c.id)
                 )
 
@@ -80,11 +79,11 @@ class Parser:
 
                 return convo
 
-        return None  # no exact match
+        return None
 
     def get_or_create_conversation(self, contacts: list[Contact]) -> Conversation:
         conversation_name = ", ".join(
-            contact.contact_name if contact.contact_name else contact.address
+            contact.name if contact.name else contact.address
             for contact in sorted(contacts, key=lambda c: c.id)
         )
 
@@ -97,7 +96,6 @@ class Parser:
 
             return convo
 
-        # Create new conversation
         new_convo = Conversation()
         self.session.add(new_convo)
         self.session.commit()  # Must commit first to get an ID
@@ -125,9 +123,7 @@ class SMSBackupAndRestore(Parser):
         if not data:
             return None
 
-        # Create unique filename
         ext = ct.split("/")[-1]
-        # Use message_id and index for filename
         filename = f"{message_id}_{index}.{ext}"
         filepath = MEDIA_DIR / filename
 
@@ -148,12 +144,12 @@ class SMSBackupAndRestore(Parser):
     def process_sms(self, elem, user_address: str):
         date_ts = int(elem.attrib["date"])
         address = elem.attrib.get("address")
-        contact_name = elem.attrib.get("contact_name")
+        name = elem.attrib.get("name")
         body = elem.attrib.get("body")
         type_code = int(elem.attrib.get("type", "1"))
 
         direction = Direction.inbox if type_code == 1 else Direction.sent
-        contact = self.get_or_create_contact(address, contact_name)
+        contact = self.get_or_create_contact(address, name)
         conversation = self.get_or_create_conversation([contact])
 
         from_contact = (
@@ -162,7 +158,7 @@ class SMSBackupAndRestore(Parser):
             else contact
         )
 
-        # Deduplication logic
+        # Dedupe
         exists = self.session.exec(
             select(Message).where(
                 Message.contact_id == from_contact.id,
@@ -218,7 +214,7 @@ class SMSBackupAndRestore(Parser):
         if user_address in participants:
             participants.discard(user_address)
 
-        # Fallback if sender is missing (assume it is "me")
+        # Assume sender is 'me' if missing
         if not from_addr:
             from_addr = user_address
 
@@ -231,7 +227,6 @@ class SMSBackupAndRestore(Parser):
         text_body = None
         media_parts = []
 
-        # Parse parts
         for part in elem.iter("part"):
             ct = part.attrib.get("ct")
             if ct == "text/plain":
@@ -239,7 +234,7 @@ class SMSBackupAndRestore(Parser):
             elif ct.startswith("image/") and "data" in part.attrib:
                 media_parts.append(part)
 
-        # Deduplication logic
+        # Dedupe here
         query = select(Message).where(
             Message.contact_id == from_contact.id,
             Message.date == datetime.fromtimestamp(date_ts / 1000),
@@ -266,7 +261,7 @@ class SMSBackupAndRestore(Parser):
         self.session.commit()
         self.session.refresh(msg)
 
-        for index, part in enumerate(media_parts):  # `parts` = list of <part> elements
+        for index, part in enumerate(media_parts):
             media = self.save_media(part, msg.id, index)
             if media:
                 self.session.add(media)
@@ -306,7 +301,7 @@ class CSV(Parser):
         self.attachment_index = self._index_attachments() if attachments_dir else {}
 
     def _index_attachments(self) -> dict[str, Path]:
-        """Build a map of normalized timestamp strings to full attachment paths."""
+        """Index attachments by datetime string, multiple possible"""
         index = {}
         for file in self.attachments_dir.iterdir():
             if not file.is_file():
@@ -326,13 +321,10 @@ class CSV(Parser):
         Example input: "November 6, 2012 at 124224 PM EST"
         Normalized: "2012-11-06 12:42:24 PM"
         """
-        # # Fix for non-standard separators (some exports use Unicode characters)
-        # name = name.replace("", ":").replace(" at ", " ")
+        # Fix for non-standard chars (some exports use Unicode characters)
         name = "".join(f"\\u{ord(c):04x}" if ord(c) > 127 else c for c in name)
 
-        # Regex pattern to extract full date and time
         pattern = r"([A-Za-z]+) (\d{1,2}), (\d{4}) at (\d{1,2})\\uf\d{3}(\d{2})\\uf\d{3}(\d{2}) (AM|PM)"
-        # pattern = r"([A-Za-z]+) (\d{1,2}), (\d{4}) at (\d{1,2})(?:\\uf\d{3}|:)(\d{2})(?:\\uf\d{3}|:)(\d{2}) (AM|PM)"
         match = re.search(pattern, name)
         if not match:
             return ""
@@ -358,7 +350,6 @@ class CSV(Parser):
             return ""
 
     def _guess_content_type(self, file_path: Path) -> str:
-        """Guess the MIME type of a file based on its extension."""
         mime_type, _ = mimetypes.guess_type(file_path)
         return mime_type or "application/octet-stream"
 
@@ -367,9 +358,7 @@ class CSV(Parser):
     ) -> Optional[Media]:
         ct = self._guess_content_type(attachment_path) if attachment_path else None
 
-        # Create unique filename
         ext = os.path.splitext(attachment_path)[1]
-        # Use message_id and index for filename
         filename = f"{message_id}_{index}{ext}"
         filepath = MEDIA_DIR / filename
 
@@ -400,7 +389,7 @@ class CSV(Parser):
                 direction = Direction.inbox if row["Name"] != "Me" else Direction.sent
                 attachments = self.attachment_index.get(date_str, [])
 
-                # Deduplication logic
+                # Dedupe messages
                 exists = self.session.exec(
                     select(Message).where(
                         Message.date == date,

@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
-from uuid import UUID
 from app.models import Contact, Message, Media, Conversation
 from app.db import get_session
 from pathlib import Path
-from starlette.responses import Response
 import mimetypes
 import hashlib
 import os
@@ -25,7 +23,7 @@ def serialize_message_with_media(msg: Message, session: Session):
         "direction": msg.direction,
         "text": msg.text,
         "date": msg.date,
-        "contact": contact.contact_name if contact.contact_name else contact.address,
+        "contact": contact.name if contact.name else contact.address,
         "media": (
             [
                 {
@@ -39,7 +37,6 @@ def serialize_message_with_media(msg: Message, session: Session):
     }
 
 
-# GET /contacts/?search=...
 @router.get("/conversations")
 def list_conversations(
     search: str | None = None, session: Session = Depends(get_session)
@@ -58,7 +55,7 @@ def list_conversations(
                 {
                     "id": contact.id,
                     "address": contact.address,
-                    "contact_name": contact.contact_name,
+                    "name": contact.name,
                 }
                 for contact in c.contacts
             ],
@@ -67,7 +64,6 @@ def list_conversations(
     ]
 
 
-# GET /conversation/{conversation_id}
 @router.get("/conversation/{conversation_id}")
 def get_conversation_by_id(
     conversation_id: int, session: Session = Depends(get_session)
@@ -83,14 +79,13 @@ def get_conversation_by_id(
             {
                 "id": contact.id,
                 "address": contact.address,
-                "contact_name": contact.contact_name,
+                "name": contact.name,
             }
             for contact in conversation.contacts
         ],
     }
 
 
-# GET /contacts/{conversation_id}/messages
 @router.get("/conversation/{conversation_id}/messages")
 def get_messages_for_conversation(
     conversation_id: int,
@@ -202,8 +197,8 @@ def get_media_for_conversation(
             "message_id": message.id if message else None,
             "date": message.date if message else None,
             "contact_id": contact.id if contact else None,
-            "contact_name": contact.contact_name if contact else None,
-            "contact_address": contact.address if contact else None,
+            "name": contact.name if contact else None,
+            "address": contact.address if contact else None,
         }
 
     return {
@@ -213,7 +208,6 @@ def get_media_for_conversation(
     }
 
 
-# GET /contacts/{conversation_id}/search
 @router.get("/conversation/{conversation_id}/search")
 def search_messages_for_conversation(
     conversation_id: int,
@@ -231,7 +225,6 @@ def search_messages_for_conversation(
     return [serialize_message_with_media(m, session) for m in messages]
 
 
-# GET /messages/{message_id}
 @router.get("/messages/{message_id}")
 def get_message_by_id(message_id: int, session: Session = Depends(get_session)):
     statement = (
@@ -262,7 +255,6 @@ def get_message_by_id(message_id: int, session: Session = Depends(get_session)):
     }
 
 
-# GET /media/{media_id}
 @router.get("/media/{media_id}")
 def get_media_metadata(media_id: str, session: Session = Depends(get_session)):
     media = session.get(Media, str(media_id))
@@ -279,12 +271,11 @@ def get_media_metadata(media_id: str, session: Session = Depends(get_session)):
         "message_id": message.id if message else None,
         "message_timestamp": message.timestamp if message else None,
         "contact_id": contact.id if contact else None,
-        "contact_name": contact.name if contact else None,
-        "contact_address": contact.address if contact else None,
+        "name": contact.name if contact else None,
+        "address": contact.address if contact else None,
     }
 
 
-# GET /media/{media_id}/cache
 @router.get("/media/{media_id}/cache")
 def serve_media_file(media_id: int, session: Session = Depends(get_session)):
     media = session.get(Media, media_id)
@@ -294,7 +285,6 @@ def serve_media_file(media_id: int, session: Session = Depends(get_session)):
     if not os.path.exists(media.file_path):
         raise HTTPException(status_code=404, detail="Media file missing on disk")
 
-    # Compute ETag (e.g. SHA256 hash of file)
     file_hash = hashlib.sha256(Path(media.file_path).read_bytes()).hexdigest()
     content_type = (
         media.content_type
@@ -302,7 +292,6 @@ def serve_media_file(media_id: int, session: Session = Depends(get_session)):
         or "application/octet-stream"
     )
 
-    # Add ETag + Last-Modified
     last_modified = datetime.utcfromtimestamp(os.stat(media.file_path).st_mtime)
     headers = {
         "ETag": file_hash,

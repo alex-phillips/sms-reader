@@ -4,7 +4,7 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from 'react-router-dom';
-import '@mantine/core/styles.css'; // Ensure Mantine global styles load
+import '@mantine/core/styles.css';
 import App from './App';
 import ContactList from './pages/ContactList';
 import Conversation from './pages/Conversation';
