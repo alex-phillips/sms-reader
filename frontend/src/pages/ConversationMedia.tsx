@@ -10,7 +10,7 @@ import {
 } from "@mantine/core";
 import { useNavigate, useParams } from "react-router-dom";
 import type { ConversationMedia } from "../types";
-import { ExternalLink, Share } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 const PAGE_SIZE = 30;
 

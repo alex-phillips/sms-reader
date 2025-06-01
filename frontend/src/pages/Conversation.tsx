@@ -24,7 +24,7 @@ type ConversationMessagesResponse = {
 
 // const SCROLL_THRESHOLD: number = 100;
 
-function useDebounce(value, delay = 500) {
+function useDebounce(value: string, delay = 500) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
