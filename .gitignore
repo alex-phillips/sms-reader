@@ -1,5 +1,5 @@
 .history/
-__pycache__/
+**/__pycache__/
 media/
 attachments/
 sms.db
