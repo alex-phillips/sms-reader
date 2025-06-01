@@ -12,7 +12,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
 router = APIRouter()
-MEDIA_DIR = Path("media")
+MEDIA_DIR = Path("/data/media")
 
 
 def serialize_message_with_media(msg: Message, session: Session):

@@ -21,7 +21,7 @@ from .models import (
 )
 from .utils import normalize_number
 
-MEDIA_DIR = Path("media")
+MEDIA_DIR = Path("/data/media")
 MEDIA_DIR.mkdir(exist_ok=True)
 
 

@@ -4,7 +4,7 @@ import sys
 from sqlmodel import SQLModel, Session, create_engine
 from app.parser import SMSBackupAndRestore
 
-sqlite_url = "sqlite:///sms.db"
+sqlite_url = "sqlite:////data/sms.db"
 engine = create_engine(sqlite_url)
 
 
