@@ -10,7 +10,6 @@ import {
   TextInput,
   Tooltip,
   NavLink,
-  Button,
   Paper,
   Divider,
   CloseButton,
@@ -32,9 +31,7 @@ export default function App() {
     useState<Conversation[]>(conversations);
   const [search, setSearch] = useState<string>("");
   const [header, setHeader] = useState<string>("Messages");
-  const [activeConvoId, setActiveConvoId] = useState<string>(
-    `${conversationId}`
-  );
+  const [activeConvoId, setActiveConvoId] = useState<number>(conversationId ? parseInt(conversationId) : 0);
   const [activeConvo, setActiveConvo] = useState<Conversation | null>(null);
 
   useEffect(() => {
@@ -52,9 +49,8 @@ export default function App() {
 
   useEffect(() => {
     setActiveConvo(
-      conversations.find((c) => c.id == parseInt(activeConvoId)) || null
+      conversations.find((c) => c.id == activeConvoId) || null
     );
-    console.log(conversations.find((c) => c.id == parseInt(activeConvoId)));
   }, [conversations, activeConvoId]);
 
   const onSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +67,7 @@ export default function App() {
   const selectConversation = (conversation: Conversation) => {
     setDrawerOpen(false);
     setHeader(conversation.name || "");
-    setActiveConvoId(conversation.id.toString());
+    setActiveConvoId(conversation.id);
   };
 
   const toggleDrawer = () => {
@@ -150,7 +146,7 @@ export default function App() {
         </AppShell.Header>
 
         <AppShell.Navbar p="md">
-          <TextInput placeholder="Search" value={search} onChange={onSearch} />
+          <TextInput placeholder="Search" value={search} onChange={onSearch} pb={10}/>
 
           <ScrollArea>
             {filteredConversations.map((conversation) => (

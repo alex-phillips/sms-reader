@@ -8,8 +8,6 @@ import {
   Loader,
   Center,
   TextInput,
-  ActionIcon,
-  CloseIcon,
   CloseButton,
 } from "@mantine/core";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
